@@ -1,0 +1,25 @@
+const colors = {
+  primary: '#1565C0',
+  primaryDark: '#0D47A1',
+  primaryLight: '#1976D2',
+  accent: '#42A5F5',
+  background: '#F0F4F8',
+  surface: '#FFFFFF',
+  textPrimary: '#1A1A2E',
+  textSecondary: '#6B7280',
+  textLight: '#9CA3AF',
+  border: '#E5E7EB',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  white: '#FFFFFF',
+  drawerBg: '#0D47A1',
+  drawerText: '#FFFFFF',
+  drawerActive: 'rgba(255,255,255,0.15)',
+  card1: '#1565C0',
+  card2: '#00897B',
+  card3: '#E65100',
+  card4: '#6A1B9A',
+};
+
+export default colors;
