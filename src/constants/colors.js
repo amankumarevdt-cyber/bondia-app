@@ -1,0 +1,26 @@
+const colors = {
+  primary: '#4F46E5',
+  primaryDark: '#3730A3',
+  primaryLight: '#818CF8',
+  primaryLight2: '#EEF2FF',
+  secondary: '#06B6D4',
+  secondaryLight: '#ECFEFF',
+  success: '#10B981',
+  successLight: '#D1FAE5',
+  danger: '#EF4444',
+  dangerLight: '#FEE2E2',
+  warning: '#F59E0B',
+  warningLight: '#FEF3C7',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  textPrimary: '#0F172A',
+  textSecondary: '#64748B',
+  textLight: '#94A3B8',
+  border: '#E2E8F0',
+  white: '#FFFFFF',
+  drawer: '#1E1B4B',
+  drawerActive: 'rgba(255,255,255,0.15)',
+  drawerItem: 'rgba(255,255,255,0.08)',
+};
+
+export default colors;

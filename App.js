@@ -2,7 +2,6 @@ import 'react-native-gesture-handler';
 import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
@@ -10,7 +9,6 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <AuthProvider>
-        <StatusBar style="light" />
         <AppNavigator />
       </AuthProvider>
     </GestureHandlerRootView>
@@ -18,7 +16,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
 });

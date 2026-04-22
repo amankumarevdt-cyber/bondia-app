@@ -1,6 +1,15 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
-import colors from '../styles/colors';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import colors from '../constants/colors';
+
+const VARIANTS = {
+  primary: { bg: colors.primary, text: colors.white },
+  secondary: { bg: colors.secondary, text: colors.white },
+  success: { bg: colors.success, text: colors.white },
+  danger: { bg: colors.danger, text: colors.white },
+  outline: { bg: 'transparent', text: colors.primary, border: colors.primary },
+  ghost: { bg: colors.primaryLight2, text: colors.primary },
+};
 
 export default function CustomButton({
   title,
@@ -9,16 +18,16 @@ export default function CustomButton({
   disabled,
   variant = 'primary',
   style,
+  small,
 }) {
-  const isPrimary = variant === 'primary';
-  const isOutline = variant === 'outline';
-
+  const v = VARIANTS[variant] || VARIANTS.primary;
   return (
     <TouchableOpacity
       style={[
-        styles.button,
-        isPrimary && styles.primary,
-        isOutline && styles.outline,
+        styles.btn,
+        { backgroundColor: v.bg },
+        v.border && { borderWidth: 1.5, borderColor: v.border },
+        small && styles.small,
         (disabled || loading) && styles.disabled,
         style,
       ]}
@@ -27,45 +36,31 @@ export default function CustomButton({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? colors.white : colors.primary} />
+        <ActivityIndicator color={v.text} size="small" />
       ) : (
-        <Text style={[styles.text, isOutline && styles.outlineText]}>{title}</Text>
+        <Text style={[styles.text, { color: v.text }, small && styles.smallText]}>
+          {title}
+        </Text>
       )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    height: 52,
+  btn: {
+    height: 50,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  primary: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  text: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-  outlineText: {
-    color: colors.primary,
-  },
+  small: { height: 36, borderRadius: 8, paddingHorizontal: 14, elevation: 1 },
+  disabled: { opacity: 0.55 },
+  text: { fontSize: 15, fontWeight: '700' },
+  smallText: { fontSize: 13 },
 });

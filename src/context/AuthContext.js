@@ -1,45 +1,63 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { loginApi } from '../api/auth';
+import { setUnauthorizedHandler } from '../api/client';
+import { saveToken, getToken, saveUser, getUser, clearAll } from '../utils/storage';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const logout = useCallback(async () => {
+    await clearAll();
+    setUser(null);
+    setIsLoggedIn(false);
+  }, []);
 
   useEffect(() => {
+    setUnauthorizedHandler(logout);
     restoreSession();
-  }, []);
+  }, [logout]);
 
   const restoreSession = async () => {
     try {
-      const stored = await AsyncStorage.getItem('@bondia_user');
-      if (stored) {
-        setUser(JSON.parse(stored));
+      const token = await getToken();
+      const stored = await getUser();
+      if (token && stored) {
+        setUser(stored);
         setIsLoggedIn(true);
       }
     } catch (_) {
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const login = async (email, password) => {
-    const userData = { email, name: 'Admin', company: 'Bondia Enterprises' };
-    await AsyncStorage.setItem('@bondia_user', JSON.stringify(userData));
-    setUser(userData);
-    setIsLoggedIn(true);
-  };
+  const login = async (mobile, password) => {
+  const response = await loginApi(mobile, password);
 
-  const logout = async () => {
-    await AsyncStorage.removeItem('@bondia_user');
-    setUser(null);
-    setIsLoggedIn(false);
-  };
+  const apiData = response.data?.data;
+
+  const token = apiData?.token;
+  const userData = apiData?.user;
+
+  if (!token) {
+    throw new Error('Login failed. No token received.');
+  }
+
+  await saveToken(token);
+  await saveUser(userData || { mobile });
+
+  setUser(userData || { mobile });
+  setIsLoggedIn(true);
+
+  return response.data;
+};
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
