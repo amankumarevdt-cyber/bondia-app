@@ -1,0 +1,97 @@
+{
+  "apiStatus": [
+    {
+      "category": "API",
+      "test": "Login",
+      "status": "⚠️",
+      "details": "Status 401 (requires auth)"
+    },
+    {
+      "category": "API",
+      "test": "Logout",
+      "status": "⚠️",
+      "details": "Status 401 (requires auth)"
+    },
+    {
+      "category": "API",
+      "test": "Dashboard",
+      "status": "⚠️",
+      "details": "Status 401 (requires auth)"
+    },
+    {
+      "category": "API",
+      "test": "Parties List",
+      "status": "⚠️",
+      "details": "Status 401 (requires auth)"
+    },
+    {
+      "category": "API",
+      "test": "Items List",
+      "status": "⚠️",
+      "details": "Status 401 (requires auth)"
+    },
+    {
+      "category": "API",
+      "test": "Orders List",
+      "status": "⚠️",
+      "details": "Status 401 (requires auth)"
+    },
+    {
+      "category": "Auth",
+      "test": "Login Success",
+      "status": "❌",
+      "details": "Status 401: Invalid mobile number."
+    },
+    {
+      "category": "Protected",
+      "test": "dashboard (no token)",
+      "status": "✅",
+      "details": "Correctly returns 401"
+    },
+    {
+      "category": "Protected",
+      "test": "parties (no token)",
+      "status": "✅",
+      "details": "Correctly returns 401"
+    },
+    {
+      "category": "Protected",
+      "test": "items (no token)",
+      "status": "✅",
+      "details": "Correctly returns 401"
+    },
+    {
+      "category": "Protected",
+      "test": "orders (no token)",
+      "status": "✅",
+      "details": "Correctly returns 401"
+    },
+    {
+      "category": "Modules",
+      "test": "Parties",
+      "status": "✅",
+      "details": "2 screens defined"
+    },
+    {
+      "category": "Modules",
+      "test": "Items",
+      "status": "✅",
+      "details": "2 screens defined"
+    },
+    {
+      "category": "Modules",
+      "test": "Orders",
+      "status": "✅",
+      "details": "3 screens defined"
+    },
+    {
+      "category": "Modules",
+      "test": "Dashboard",
+      "status": "✅",
+      "details": "1 screens defined"
+    }
+  ],
+  "authFlow": {},
+  "modules": {},
+  "errors": []
+}

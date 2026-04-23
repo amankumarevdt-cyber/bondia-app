@@ -1,6 +1,11 @@
 import client from './client';
+import { getEndpointPath } from '../constants/config';
 
-export const getParties = () => client.get('/parties/json');
-export const createParty = (data) => client.post('/parties/store', data);
-export const updateParty = (id, data) => client.post(`/parties/update/${id}`, data);
-export const deleteParty = (id) => client.post(`/parties/delete/${id}`);
+// Mobile API (token-based) endpoints per Head Ma'am instructions are under /api/*
+// To support inconsistent backends, you can override these in `ENDPOINT_OVERRIDES`.
+export const getParties = () => client.get(getEndpointPath('parties'));
+export const createParty = (data) => client.post(getEndpointPath('parties'), data);
+export const updateParty = (id, data) =>
+  client.put(`${getEndpointPath('parties')}/${id}`, data);
+export const deleteParty = (id) =>
+  client.delete(`${getEndpointPath('parties')}/${id}`);

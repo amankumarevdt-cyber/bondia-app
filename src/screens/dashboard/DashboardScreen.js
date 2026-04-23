@@ -16,19 +16,23 @@ import { useAuth } from '../../context/AuthContext';
 import colors from '../../constants/colors';
 
 const CARD_CONFIG = [
-  { key: 'parties', label: 'Parties', icon: '🏢', color: colors.primary, screen: 'Parties' },
-  { key: 'orders', label: 'Orders', icon: '🛒', color: '#0D9488', screen: 'Orders' },
-  { key: 'item_group', label: 'Item Groups', icon: '📦', color: '#EA580C', screen: 'Items' },
-  { key: 'staffs', label: 'Staffs', icon: '👥', color: '#7C3AED', screen: null },
-  { key: 'beats', label: 'Beats', icon: '📍', color: '#2563EB', screen: null },
-  { key: 'roles', label: 'Roles', icon: '🛡️', color: '#0891B2', screen: null },
-  { key: 'brands', label: 'Brands', icon: '⭐', color: '#D97706', screen: null },
-  { key: 'customer_types', label: 'Cust. Types', icon: '🏷️', color: '#DB2777', screen: null },
-  { key: 'area', label: 'Areas', icon: '🗺️', color: colors.secondary, screen: null },
-  { key: 'industry', label: 'Industry', icon: '🏭', color: '#059669', screen: null },
-  { key: 'company', label: 'Companies', icon: '🏬', color: colors.danger, screen: null },
-  { key: 'unit', label: 'Units', icon: '📏', color: '#6366F1', screen: null },
+  { key: 'parties', label: 'Parties', iconName: 'business-outline', color: colors.primary, screen: 'Parties' },
+  { key: 'orders', label: 'Orders', iconName: 'cart-outline', color: '#0D9488', screen: 'Orders' },
+  { key: 'item_group', label: 'Item Groups', iconName: 'cube-outline', color: '#EA580C', screen: 'Items' },
+  { key: 'staffs', label: 'Staffs', iconName: 'people-outline', color: '#7C3AED', screen: null },
+  { key: 'beats', label: 'Beats', iconName: 'location-outline', color: '#2563EB', screen: null },
+  { key: 'roles', label: 'Roles', iconName: 'shield-checkmark-outline', color: '#0891B2', screen: null },
+  { key: 'brands', label: 'Brands', iconName: 'star-outline', color: '#D97706', screen: null },
+  { key: 'customer_types', label: 'Cust. Types', iconName: 'pricetag-outline', color: '#DB2777', screen: null },
+  { key: 'area', label: 'Areas', iconName: 'map-outline', color: colors.secondary, screen: null },
+  { key: 'industry', label: 'Industry', iconName: 'construct-outline', color: '#059669', screen: null },
+  { key: 'company', label: 'Companies', iconName: 'storefront-outline', color: colors.danger, screen: null },
+  { key: 'unit', label: 'Units', iconName: 'resize-outline', color: '#6366F1', screen: null },
 ];
+
+function normalizeDashboardStats(response) {
+  return response?.data?.data || response?.data || response || {};
+}
 
 export default function DashboardScreen({ navigation }) {
   const { user } = useAuth();
@@ -40,9 +44,9 @@ export default function DashboardScreen({ navigation }) {
     if (!isRefresh) setLoading(true);
     try {
       const res = await getDashboard();
-      setStats(res.data || res);
+      setStats(normalizeDashboardStats(res));
     } catch (err) {
-      if (!isRefresh) Alert.alert('Error', 'Failed to load dashboard data.');
+      if (!isRefresh) Alert.alert('Error', err.message || 'Failed to load dashboard data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,7 +80,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.greetingSection}>
           <Text style={styles.greeting}>{greeting},</Text>
           <Text style={styles.userName}>
-            {user?.name || user?.mobile || 'Admin'} 👋
+            {user?.name || user?.mobile || 'Admin'}
           </Text>
           <Text style={styles.date}>
             {new Date().toLocaleDateString('en-IN', {
@@ -90,15 +94,15 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.bannerRow}>
           <View style={[styles.banner, { backgroundColor: colors.primary }]}>
-            <Text style={styles.bannerVal}>{stats.parties ?? '—'}</Text>
+            <Text style={styles.bannerVal}>{stats.parties ?? '-'}</Text>
             <Text style={styles.bannerLabel}>Parties</Text>
           </View>
           <View style={[styles.banner, { backgroundColor: '#0D9488' }]}>
-            <Text style={styles.bannerVal}>{stats.orders ?? '—'}</Text>
+            <Text style={styles.bannerVal}>{stats.orders ?? '-'}</Text>
             <Text style={styles.bannerLabel}>Orders</Text>
           </View>
           <View style={[styles.banner, { backgroundColor: '#7C3AED' }]}>
-            <Text style={styles.bannerVal}>{stats.staffs ?? '—'}</Text>
+            <Text style={styles.bannerVal}>{stats.staffs ?? '-'}</Text>
             <Text style={styles.bannerLabel}>Staffs</Text>
           </View>
         </View>
@@ -111,7 +115,7 @@ export default function DashboardScreen({ navigation }) {
               key={card.key}
               title={card.label}
               value={stats[card.key] ?? '0'}
-              icon={card.icon}
+              iconName={card.iconName}
               color={card.color}
               onPress={
                 card.screen ? () => navigation.navigate(card.screen) : undefined
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
   },
   banner: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     shadowColor: '#000',

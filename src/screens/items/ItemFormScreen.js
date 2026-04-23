@@ -6,7 +6,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomInput from '../../components/CustomInput';
@@ -19,11 +18,11 @@ export default function ItemFormScreen({ route, navigation }) {
   const isEdit = !!item;
 
   const [form, setForm] = useState({
-    name: item?.name || '',
-    hsn_code: item?.hsn_code || '',
-    unit: item?.unit || '',
-    price: item?.price ? String(item.price) : '',
-    gst: item?.gst ? String(item.gst) : '',
+    name: item?.name || item?.item_name || '',
+    hsn_code: item?.hsn_code || item?.hsn || '',
+    unit: item?.unit || item?.unit_name || '',
+    price: item?.price != null || item?.rate != null ? String(item.price ?? item.rate) : '',
+    gst: item?.gst != null || item?.gst_rate != null ? String(item.gst ?? item.gst_rate) : '',
     brand_id: item?.brand_id ? String(item.brand_id) : '',
     category_id: item?.category_id ? String(item.category_id) : '',
   });
@@ -37,11 +36,15 @@ export default function ItemFormScreen({ route, navigation }) {
 
   const validate = () => {
     const e = {};
+    const price = Number(form.price);
+    const gst = Number(form.gst);
     if (!form.name.trim()) e.name = 'Item name is required';
-    if (form.price && isNaN(parseFloat(form.price)))
+    if (form.price && (!Number.isFinite(price) || price < 0)) {
       e.price = 'Enter a valid price';
-    if (form.gst && (isNaN(parseFloat(form.gst)) || parseFloat(form.gst) > 100))
+    }
+    if (form.gst && (!Number.isFinite(gst) || gst < 0 || gst > 100)) {
       e.gst = 'Enter a valid GST percentage (0-100)';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -51,20 +54,20 @@ export default function ItemFormScreen({ route, navigation }) {
     setLoading(true);
     const payload = {
       ...form,
-      price: form.price ? parseFloat(form.price) : null,
-      gst: form.gst ? parseFloat(form.gst) : null,
-      brand_id: form.brand_id ? parseInt(form.brand_id) : null,
-      category_id: form.category_id ? parseInt(form.category_id) : null,
+      price: form.price ? Number(form.price) : null,
+      gst: form.gst ? Number(form.gst) : null,
+      brand_id: form.brand_id ? Number.parseInt(form.brand_id, 10) : null,
+      category_id: form.category_id ? Number.parseInt(form.category_id, 10) : null,
     };
     try {
       if (isEdit) {
         await updateItem(item.id, payload);
-        Alert.alert('Success', 'Item updated successfully!', [
+        Alert.alert('Success', 'Item updated successfully.', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       } else {
         await createItem(payload);
-        Alert.alert('Success', 'Item added successfully!', [
+        Alert.alert('Success', 'Item added successfully.', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       }
@@ -112,9 +115,9 @@ export default function ItemFormScreen({ route, navigation }) {
           />
 
           <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={styles.rowLeft}>
               <CustomInput
-                label="Price (₹)"
+                label="Price (Rs.)"
                 value={form.price}
                 onChangeText={(v) => set('price', v)}
                 placeholder="0.00"
@@ -122,7 +125,7 @@ export default function ItemFormScreen({ route, navigation }) {
                 error={errors.price}
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.rowRight}>
               <CustomInput
                 label="GST %"
                 value={form.gst}
@@ -135,7 +138,7 @@ export default function ItemFormScreen({ route, navigation }) {
           </View>
 
           <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={styles.rowLeft}>
               <CustomInput
                 label="Brand ID"
                 value={form.brand_id}
@@ -145,7 +148,7 @@ export default function ItemFormScreen({ route, navigation }) {
                 error={errors.brand_id}
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.rowRight}>
               <CustomInput
                 label="Category ID"
                 value={form.category_id}
@@ -156,10 +159,6 @@ export default function ItemFormScreen({ route, navigation }) {
               />
             </View>
           </View>
-
-          <Text style={styles.hint}>
-            💡 Brand and Category dropdowns will be available in the next update.
-          </Text>
 
           <CustomButton
             title={isEdit ? 'Update Item' : 'Add Item'}
@@ -183,10 +182,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingBottom: 48 },
   row: { flexDirection: 'row' },
-  hint: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginBottom: 16,
-    fontStyle: 'italic',
-  },
+  rowLeft: { flex: 1, marginRight: 8 },
+  rowRight: { flex: 1 },
 });

@@ -14,41 +14,64 @@ import { Ionicons } from '@expo/vector-icons';
 import SearchBar from '../../components/SearchBar';
 import Loader from '../../components/Loader';
 import EmptyState from '../../components/EmptyState';
-import { getItems } from '../../api/items';
+import { getItems, deleteItem } from '../../api/items';
 import colors from '../../constants/colors';
 
-function ItemCard({ item, onEdit }) {
-  const price = item.price ? `₹ ${parseFloat(item.price).toLocaleString('en-IN')}` : '—';
-  const gst = item.gst ? `${item.gst}% GST` : null;
+function normalizeList(response) {
+  const payload = response?.data ?? response;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+}
+
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return '-';
+  return `Rs. ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function ItemCard({ item, onEdit, onDelete }) {
+  const name = item.name || item.item_name || 'Unnamed Item';
+  const hsn = item.hsn_code || item.hsn || '';
+  const unit = item.unit || item.unit_name || '';
+  const gst = item.gst || item.gst_rate || '';
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onEdit(item)} activeOpacity={0.8}>
       <View style={styles.iconBox}>
-        <Text style={styles.iconText}>📦</Text>
+        <Ionicons name="cube-outline" size={22} color="#EA580C" />
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{name}</Text>
         <View style={styles.tagRow}>
-          {item.hsn_code ? (
+          {hsn ? (
             <View style={styles.tag}>
-              <Text style={styles.tagText}>HSN: {item.hsn_code}</Text>
+              <Text style={styles.tagText}>HSN {hsn}</Text>
             </View>
           ) : null}
-          {item.unit ? (
-            <View style={[styles.tag, { backgroundColor: colors.secondaryLight }]}>
-              <Text style={[styles.tagText, { color: '#0E7490' }]}>{item.unit}</Text>
+          {unit ? (
+            <View style={[styles.tag, styles.unitTag]}>
+              <Text style={[styles.tagText, styles.unitTagText]}>{unit}</Text>
             </View>
           ) : null}
           {gst ? (
-            <View style={[styles.tag, { backgroundColor: colors.successLight }]}>
-              <Text style={[styles.tagText, { color: '#065F46' }]}>{gst}</Text>
+            <View style={[styles.tag, styles.gstTag]}>
+              <Text style={[styles.tagText, styles.gstTagText]}>{gst}% GST</Text>
             </View>
           ) : null}
         </View>
       </View>
-      <View style={styles.priceBox}>
-        <Text style={styles.price}>{price}</Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+      <View style={styles.trailing}>
+        <Text style={styles.price}>{formatCurrency(item.price || item.rate)}</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onEdit(item)}>
+            <Ionicons name="create-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionBtn, styles.deleteBtn]} onPress={() => onDelete(item)}>
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -64,12 +87,9 @@ export default function ItemListScreen({ navigation }) {
     if (!isRefresh) setLoading(true);
     try {
       const res = await getItems();
-      const data = Array.isArray(res.data)
-        ? res.data
-        : res.data?.data || [];
-      setItems(data);
+      setItems(normalizeList(res));
     } catch (err) {
-      Alert.alert('Error', 'Failed to load items.');
+      Alert.alert('Error', err.message || 'Failed to load items.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,11 +98,31 @@ export default function ItemListScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { loadItems(); }, [loadItems]));
 
-  const filtered = items.filter(
-    (i) =>
-      i.name?.toLowerCase().includes(search.toLowerCase()) ||
-      i.hsn_code?.includes(search),
-  );
+  const handleDelete = (item) => {
+    const itemName = item.name || item.item_name || 'this item';
+    Alert.alert('Delete Item', `Delete "${itemName}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteItem(item.id);
+            setItems((prev) => prev.filter((i) => i.id !== item.id));
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Failed to delete item.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const query = search.trim().toLowerCase();
+  const filtered = items.filter((i) => {
+    const name = i.name || i.item_name || '';
+    const hsn = i.hsn_code || i.hsn || '';
+    return name.toLowerCase().includes(query) || String(hsn).includes(query);
+  });
 
   if (loading) return <Loader message="Loading items..." />;
 
@@ -94,14 +134,21 @@ export default function ItemListScreen({ navigation }) {
           onChangeText={setSearch}
           placeholder="Search by name or HSN code..."
         />
-        <Text style={styles.count}>{filtered.length} items</Text>
+        <View style={styles.toolbar}>
+          <Text style={styles.count}>{filtered.length} items</Text>
+          <TouchableOpacity style={styles.addSmallBtn} onPress={() => navigation.navigate('ItemForm', { item: null })}>
+            <Ionicons name="add" size={18} color={colors.white} />
+            <Text style={styles.addSmallText}>Add</Text>
+          </TouchableOpacity>
+        </View>
         <FlatList
           data={filtered}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item, index) => String(item.id || item.hsn_code || index)}
           renderItem={({ item }) => (
             <ItemCard
               item={item}
               onEdit={(i) => navigation.navigate('ItemForm', { item: i })}
+              onDelete={handleDelete}
             />
           )}
           refreshControl={
@@ -113,26 +160,15 @@ export default function ItemListScreen({ navigation }) {
           }
           ListEmptyComponent={
             <EmptyState
-              icon="📦"
+              iconName="cube-outline"
+              iconColor="#EA580C"
               title="No Items Found"
-              message={
-                search
-                  ? 'No results match your search.'
-                  : 'Add your first item using the button below.'
-              }
+              message={search ? 'No results match your search.' : 'Add products or services before creating orders.'}
             />
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
         />
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('ItemForm', { item: null })}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add" size={22} color={colors.white} />
-          <Text style={styles.fabText}>Add Item</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -141,11 +177,27 @@ export default function ItemListScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
-  count: { fontSize: 12, color: colors.textLight, marginBottom: 8, fontWeight: '500' },
-  list: { paddingBottom: 90 },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  count: { fontSize: 12, color: colors.textLight, fontWeight: '600' },
+  addSmallBtn: {
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EA580C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  addSmallText: { color: colors.white, fontSize: 13, fontWeight: '700' },
+  list: { paddingBottom: 20 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 14,
     marginBottom: 10,
     flexDirection: 'row',
@@ -159,16 +211,15 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 46,
     height: 46,
-    borderRadius: 13,
+    borderRadius: 8,
     backgroundColor: '#FFF7ED',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     flexShrink: 0,
   },
-  iconText: { fontSize: 22 },
-  info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
+  info: { flex: 1, minWidth: 0 },
+  name: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 7 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: {
     backgroundColor: colors.primaryLight2,
@@ -177,25 +228,20 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   tagText: { fontSize: 11, fontWeight: '600', color: colors.primary },
-  priceBox: { alignItems: 'flex-end', marginLeft: 8 },
-  price: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 16,
-    left: 16,
-    backgroundColor: '#EA580C',
-    borderRadius: 14,
-    height: 52,
-    flexDirection: 'row',
+  unitTag: { backgroundColor: colors.secondaryLight },
+  unitTagText: { color: '#0E7490' },
+  gstTag: { backgroundColor: colors.successLight },
+  gstTagText: { color: '#065F46' },
+  trailing: { alignItems: 'flex-end', marginLeft: 10 },
+  price: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 8 },
+  actions: { flexDirection: 'row', gap: 8 },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.primaryLight2,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    shadowColor: '#EA580C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
   },
-  fabText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  deleteBtn: { backgroundColor: colors.dangerLight },
 });

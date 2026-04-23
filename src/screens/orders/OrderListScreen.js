@@ -21,43 +21,65 @@ const STATUS_COLORS = {
   pending: { bg: colors.warningLight, text: '#92400E' },
   confirmed: { bg: colors.primaryLight2, text: colors.primaryDark },
   delivered: { bg: colors.successLight, text: '#065F46' },
+  completed: { bg: colors.successLight, text: '#065F46' },
   cancelled: { bg: colors.dangerLight, text: '#991B1B' },
   default: { bg: '#F1F5F9', text: colors.textSecondary },
 };
 
+function normalizeList(response) {
+  const payload = response?.data ?? response;
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return [];
+}
+
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return '-';
+  return `Rs. ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 function OrderCard({ item, onPress }) {
-  const statusKey = item.status?.toLowerCase() || 'default';
+  const id = item.id || item.order_id || item.order_no || '-';
+  const status = item.status || 'Pending';
+  const statusKey = status.toLowerCase();
   const sc = STATUS_COLORS[statusKey] || STATUS_COLORS.default;
-  const total = item.total
-    ? `₹ ${parseFloat(item.total).toLocaleString('en-IN')}`
-    : '—';
+  const partyName = item.party?.name || item.party_name || item.customer_name || 'Walk-in Party';
+  const total = item.total || item.grand_total || item.amount;
+  const date = item.created_at || item.date || item.order_date;
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(item)} activeOpacity={0.8}>
       <View style={styles.cardTop}>
-        <Text style={styles.orderId}>#{item.id || item.order_id}</Text>
+        <View style={styles.orderIdWrap}>
+          <Ionicons name="receipt-outline" size={17} color={colors.primary} />
+          <Text style={styles.orderId}>#{id}</Text>
+        </View>
         <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
-          <Text style={[styles.statusText, { color: sc.text }]}>
-            {item.status || 'Pending'}
+          <Text style={[styles.statusText, { color: sc.text }]} numberOfLines={1}>
+            {status}
           </Text>
         </View>
       </View>
-      {item.party?.name || item.party_name ? (
-        <Text style={styles.partyName}>
-          {item.party?.name || item.party_name}
-        </Text>
-      ) : null}
+      <Text style={styles.partyName} numberOfLines={1}>{partyName}</Text>
       <View style={styles.cardBottom}>
-        <Text style={styles.date}>
-          {item.created_at
-            ? new Date(item.created_at).toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })
-            : item.date || '—'}
-        </Text>
-        <Text style={styles.total}>{total}</Text>
+        <View style={styles.metaItem}>
+          <Ionicons name="calendar-outline" size={14} color={colors.textLight} />
+          <Text style={styles.date}>{formatDate(date)}</Text>
+        </View>
+        <Text style={styles.total}>{formatCurrency(total)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -73,12 +95,9 @@ export default function OrderListScreen({ navigation }) {
     if (!isRefresh) setLoading(true);
     try {
       const res = await getOrders();
-      const data = Array.isArray(res.data)
-        ? res.data
-        : res.data?.data || [];
-      setOrders(data);
+      setOrders(normalizeList(res));
     } catch (err) {
-      Alert.alert('Error', 'Failed to load orders.');
+      Alert.alert('Error', err.message || 'Failed to load orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,11 +106,15 @@ export default function OrderListScreen({ navigation }) {
 
   useFocusEffect(useCallback(() => { loadOrders(); }, [loadOrders]));
 
+  const query = search.trim().toLowerCase();
   const filtered = orders.filter((o) => {
-    const q = search.toLowerCase();
+    const id = o.id || o.order_id || o.order_no || '';
+    const party = o.party?.name || o.party_name || o.customer_name || '';
+    const status = o.status || '';
     return (
-      String(o.id || o.order_id).includes(q) ||
-      (o.party?.name || o.party_name || '').toLowerCase().includes(q)
+      String(id).toLowerCase().includes(query) ||
+      party.toLowerCase().includes(query) ||
+      status.toLowerCase().includes(query)
     );
   });
 
@@ -103,16 +126,22 @@ export default function OrderListScreen({ navigation }) {
         <SearchBar
           value={search}
           onChangeText={setSearch}
-          placeholder="Search by order ID or party name..."
+          placeholder="Search by order ID, party or status..."
         />
-        <Text style={styles.count}>{filtered.length} orders</Text>
+        <View style={styles.toolbar}>
+          <Text style={styles.count}>{filtered.length} orders</Text>
+          <TouchableOpacity style={styles.addSmallBtn} onPress={() => navigation.navigate('OrderCreate')}>
+            <Ionicons name="add" size={18} color={colors.white} />
+            <Text style={styles.addSmallText}>New</Text>
+          </TouchableOpacity>
+        </View>
         <FlatList
           data={filtered}
-          keyExtractor={(item) => String(item.id || item.order_id)}
+          keyExtractor={(item, index) => String(item.id || item.order_id || index)}
           renderItem={({ item }) => (
             <OrderCard
               item={item}
-              onPress={(o) => navigation.navigate('OrderDetail', { order: o })}
+              onPress={(o) => navigation.navigate('OrderDetail', { order: o, id: o.id || o.order_id })}
             />
           )}
           refreshControl={
@@ -124,26 +153,15 @@ export default function OrderListScreen({ navigation }) {
           }
           ListEmptyComponent={
             <EmptyState
-              icon="🛒"
+              iconName="cart-outline"
+              iconColor="#0D9488"
               title="No Orders Found"
-              message={
-                search
-                  ? 'No results match your search.'
-                  : 'Create your first order using the button below.'
-              }
+              message={search ? 'No results match your search.' : 'Create your first order from parties and items.'}
             />
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
         />
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('OrderCreate')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add" size={22} color={colors.white} />
-          <Text style={styles.fabText}>New Order</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -152,11 +170,27 @@ export default function OrderListScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
-  count: { fontSize: 12, color: colors.textLight, marginBottom: 8, fontWeight: '500' },
-  list: { paddingBottom: 90 },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  count: { fontSize: 12, color: colors.textLight, fontWeight: '600' },
+  addSmallBtn: {
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0D9488',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  addSmallText: { color: colors.white, fontSize: 13, fontWeight: '700' },
+  list: { paddingBottom: 20 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 10,
     shadowColor: '#000',
@@ -169,18 +203,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+    gap: 10,
   },
+  orderIdWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
   orderId: { fontSize: 14, fontWeight: '800', color: colors.primary },
   statusBadge: {
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    maxWidth: 130,
   },
   statusText: { fontSize: 11, fontWeight: '700' },
   partyName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 10,
   },
@@ -191,26 +228,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: 10,
     alignItems: 'center',
+    gap: 8,
   },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
   date: { fontSize: 12, color: colors.textSecondary },
   total: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 16,
-    left: 16,
-    backgroundColor: '#0D9488',
-    borderRadius: 14,
-    height: 52,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#0D9488',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  fabText: { color: colors.white, fontWeight: '700', fontSize: 15 },
 });
